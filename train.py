@@ -15,7 +15,7 @@ from torchvision import transforms
 
 from matplotlib import pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
-os.environ['CUDA_VISIBLE_DEVICES']='0'
+os.environ['CUDA_VISIBLE_DEVICES']='3'
 
 
 def weights_init(m):
@@ -27,24 +27,24 @@ def weights_init(m):
         m.bias.data.fill_(0)
         
 def train(config):
-	os.environ['CUDA_VISIBLE_DEVICES']='0'
+	os.environ['CUDA_VISIBLE_DEVICES']='3'
 
 	DarkLighter = model.enhancer().cuda()
+	#DarkLighter = model_u_forme.enhancer().cuda()
 	DarkLighter.apply(weights_init)
 	if config.load_pretrain == True:
 	    DarkLighter.load_state_dict(torch.load(config.pretrain_dir))
 	train_dataset = dataloader.lowlight_loader(config.lowlight_images_path)
-	
+	print
 	train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=config.train_batch_size, shuffle=True, num_workers=config.num_workers, pin_memory=True)
 
 	L_color =Loss.L_color()
-	L_cen = Loss.L_cen(16,0.6)
+	L_cen = Loss.L_cen(16,0.75)
 	L_ill = Loss.L_ill()
 	L_perc = Loss.perception_loss()
 	
 
 	optimizer = torch.optim.Adam(DarkLighter.parameters(), lr=config.lr, weight_decay=config.weight_decay)
-	
 	DarkLighter.train()
 
 	for epoch in range(config.num_epochs):
@@ -62,10 +62,7 @@ def train(config):
 			
 			loss_perc = 0.001*torch.norm(L_perc(enhanced_image) - L_perc(img_lowlight))
 
-
-
 			loss =    Loss_ill   +loss_cen +  loss_col + loss_perc
-
 			
 			optimizer.zero_grad()
 			loss.backward()
@@ -73,7 +70,7 @@ def train(config):
 			optimizer.step()
 
 			if ((iteration+1) % config.display_iter) == 0:
-				print("Loss at iteration", iteration+1, ":", loss.item())
+				print("Epoch", str(epoch), ":","Loss at iteration", iteration+1, ":", loss.item())
 				
 			if ((iteration+1) % config.snapshot_iter) == 0:
 				
@@ -87,17 +84,17 @@ if __name__ == "__main__":
 	parser = argparse.ArgumentParser()
 
 	# Input Parameters
-	parser.add_argument('--lowlight_images_path', type=str, default="/opt/DarkLighter-new/data/train/")
+	parser.add_argument('--lowlight_images_path', type=str, default="/data0/dsy/project/ULRE-Net/data/train/")
 	parser.add_argument('--lr', type=float, default=0.0001)
 	parser.add_argument('--weight_decay', type=float, default=0.0001)
 	parser.add_argument('--grad_clip_norm', type=float, default=0.1)
 	parser.add_argument('--num_epochs', type=int, default=200)
-	parser.add_argument('--train_batch_size', type=int, default=32)
+	parser.add_argument('--train_batch_size', type=int, default=8)
 	parser.add_argument('--val_batch_size', type=int, default=4)
 	parser.add_argument('--num_workers', type=int, default=4)
 	parser.add_argument('--display_iter', type=int, default=10)
 	parser.add_argument('--snapshot_iter', type=int, default=10)
-	parser.add_argument('--snapshots_folder', type=str, default="snapshots/")
+	parser.add_argument('--snapshots_folder', type=str, default="snapshots_up2_0.75/")
 	parser.add_argument('--load_pretrain', type=bool, default= False)
 	parser.add_argument('--pretrain_dir', type=str, default= "snapshots/Epoch168.pth")
 
